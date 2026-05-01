@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import Logger from './middlewares/logger.middleware.js';
 import ExecuteRouter from './routers/execute.router.js';
