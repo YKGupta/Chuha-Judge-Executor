@@ -1,16 +1,12 @@
+import { ObjectId } from "mongodb";
+import { db } from "../database/connect.js";
+
 const SubmissionMiddleware = async (req, res, next) => {
     try
     {
-        const submissionId = req.params.submissionId;
-        const r = await fetch(`${process.env.SUBMISSION_API_URL}/${submissionId}`, {
-            headers: {
-                "x-api-key": process.env.SUBMISSION_API_KEY
-            }
-        });
-        const submission = await r.json();
-        if(!r.ok)
-            throw new Error("Submission API Error");
-        req.submission = submission.data;
+        const submissionId = new ObjectId(req.params.submissionId);
+        const submission = await db.collection('Submissions').findOne({ _id: submissionId });
+        req.submission = submission;
         next();
     }
     catch(e)
