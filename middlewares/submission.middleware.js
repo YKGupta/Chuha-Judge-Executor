@@ -24,10 +24,10 @@ const SubmissionMiddleware = async (req, res, next) => {
             returnDocument: "before"
         });
 
-        if(!submission.value)
+        if(!submission)
             return res.sendStatus(204);
 
-        req.submission = submission.value;
+        req.submission = submission;
         next();
     }
     catch(e)
