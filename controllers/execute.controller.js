@@ -93,7 +93,7 @@ const RunTestcases = async (container, submission) => {
 
         const runtime = runtimes[submission.language];
 
-        let maxExecutionTime = 0;
+        let maxExecutionTime = 0, maxMemory = 0;
 
         for(const testcase of testcases)
         {
@@ -104,6 +104,7 @@ const RunTestcases = async (container, submission) => {
                 throw new Error(testcaseResult.error.message);
 
             maxExecutionTime = Math.max(maxExecutionTime, Date.now() - startTime);
+            maxMemory = Math.max(maxMemory, testcaseResult.data.memory);
 
             const verdict = EvaluateTestcase(testcaseResult.data, testcase);
 
@@ -114,7 +115,7 @@ const RunTestcases = async (container, submission) => {
                         status: verdict,
                         execution: {
                             time: maxExecutionTime,
-                            memory: 0
+                            memory: maxMemory
                         },
                         error: {
                             message: "Testcase Failed",
@@ -132,7 +133,7 @@ const RunTestcases = async (container, submission) => {
                 status: "accepted",
                 execution: {
                     time: maxExecutionTime,
-                    memory: 0
+                    memory: maxMemory
                 },
                 error: null
             },
@@ -155,6 +156,18 @@ const RunTestcases = async (container, submission) => {
 const RunTestcase = async (container, testcase, execCommand) => {
     try
     {
+        let stopPolling = false, maxMemory = 0;
+        const pollMemory = async () => {
+            while(!stopPolling)
+            {
+                const stats = await container.stats({ stream: false });
+                maxMemory = Math.max(maxMemory, stats.memory_stats.usage || 0);
+                await new Promise((resolve, reject) => setTimeout(resolve, 100));
+            }
+        };
+
+        const poller = pollMemory();
+
         const exec = await container.exec({
             Cmd: ["timeout", "5s", ...execCommand],
             AttachStdin: true,
@@ -195,28 +208,20 @@ const RunTestcase = async (container, testcase, execCommand) => {
                 reject(e);
             });
         });
+
+        stopPolling = true;
+        await poller;
         
         const info = await exec.inspect();
-
-        if(info.ExitCode === 124)
-            return ({
-                success: true,
-                data: {
-                    stdout,
-                    stderr,
-                    exitCode: info.ExitCode,
-                    timedOut: true
-                },
-                error: null
-            });
 
         return ({
             success: true,
             data: {
                 stdout,
                 stderr,
+                memory: maxMemory,
                 exitCode: info.ExitCode,
-                timedOut: false
+                timedOut: info.ExitCode === 124 || info.ExitCode === 143
             },
             error: null
         });
