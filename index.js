@@ -1,7 +1,10 @@
 import 'dotenv/config';
+import { connectToDB } from './database/connect.js';
 import express from 'express';
 import Logger from './middlewares/logger.middleware.js';
 import ExecuteRouter from './routers/execute.router.js';
+
+await connectToDB();
 
 const app = express();
 

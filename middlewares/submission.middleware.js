@@ -1,16 +1,33 @@
+import { ObjectId } from "mongodb";
+import { db } from "../database/connect.js";
+
 const SubmissionMiddleware = async (req, res, next) => {
     try
     {
-        const submissionId = req.params.submissionId;
-        const r = await fetch(`${process.env.SUBMISSION_API_URL}/${submissionId}`, {
-            headers: {
-                "x-api-key": process.env.SUBMISSION_API_KEY
+        if (!ObjectId.isValid(req.params.submissionId))
+            return res.status(400).json({
+                success: false,
+                data: null,
+                error: { 
+                    message: "Invalid submissionId", 
+                    code: "INVALID_ID" 
+                }
+            });
+
+        const submissionId = new ObjectId(req.params.submissionId);
+        const submission = await db.collection('Submissions').findOneAndUpdate({ _id: submissionId, status: "pending" }, {
+            $set: {
+                status: "running",
+                updatedAt: new Date()
             }
+        }, {
+            returnDocument: "before"
         });
-        const submission = await r.json();
-        if(!r.ok)
-            throw new Error("Submission API Error");
-        req.submission = submission.data;
+
+        if(!submission)
+            return res.sendStatus(204);
+
+        req.submission = submission;
         next();
     }
     catch(e)
