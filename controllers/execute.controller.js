@@ -109,6 +109,23 @@ const RunTestcases = async (container, submission) => {
             const verdict = EvaluateTestcase(testcaseResult.data, testcase);
 
             if(verdict !== "accepted")
+            {
+                const failedTestcase = verdict === "runtime_error" ? 
+                {
+                    input: testcase.input,
+                    stderr: testcaseResult.data.stderr
+                }
+                : verdict === "time_limit_exceeded" ? 
+                {
+                    input: testcase.input
+                }
+                : 
+                {
+                    input: testcase.input,
+                    expectedOutput: testcase.output,
+                    actualOutput: testcaseResult.data.stdout
+                };
+
                 return ({
                     success: true,
                     data: {
@@ -117,6 +134,7 @@ const RunTestcases = async (container, submission) => {
                             time: maxExecutionTime,
                             memory: maxMemory
                         },
+                        failedTestcase,
                         error: {
                             message: "Testcase Failed",
                             t: JSON.stringify(testcaseResult),
@@ -125,6 +143,7 @@ const RunTestcases = async (container, submission) => {
                     },
                     error: null
                 });
+            }
         }
 
         return ({
@@ -257,6 +276,7 @@ const UpdateSubmission = async (submission, result) => {
             $set: {
                 status: result.status,
                 execution: result.execution,
+                failedTestcase: result.failedTestcase,
                 updatedAt: new Date()
             }
         });
